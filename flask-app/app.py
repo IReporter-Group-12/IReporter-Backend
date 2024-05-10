@@ -1,16 +1,18 @@
 from flask import Flask, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
+from flask_bcrypt import Bcrypt
+from config import ApplicationConfig
 from models import db
 
 
 app = Flask(__name__)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@localhost/ireporter-db'
-
+app.config.from_object(ApplicationConfig)
+CORS(app)
 db.init_app(app)
 migrate= Migrate(app, db)
-
+bcrypt = Bcrypt(app)
 
 
 if __name__ == '__main__':
