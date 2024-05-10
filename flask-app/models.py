@@ -10,7 +10,7 @@ class User(db.Model):
     fullname = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False)
     password = db.Column(db.String, nullable=False)
-    id_passport_no = db.Column(db.Integer(30), nullable=False)
+    id_passport_no = db.Column(db.Integer, nullable=False)
     role = db.Column(db.String, nullable=False)
     # relationships
     corruption_report = db.relationship('CorruptionReport', backref='whistleblower')
