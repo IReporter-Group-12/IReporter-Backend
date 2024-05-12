@@ -14,7 +14,9 @@ db.init_app(app)
 migrate= Migrate(app, db)
 bcrypt = Bcrypt(app)
 
-
+@app.route('/')
+def index():
+    return '<h1>Welcome to IReporter!</h1>'
 
 @app.route('/corruption_reports', methods=['POST'])
 def create_corruption_report():
