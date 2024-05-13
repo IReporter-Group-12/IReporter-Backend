@@ -19,8 +19,9 @@ def seed_database():
         db.session.commit()
 
         # Create sample corruption resolutions
-        resolution1 = CorruptionResolution(status='Resolved', justification='Resolved the issue', record_id=report1.id)
-        resolution2 = CorruptionResolution(status='Under Investigation', justification='Investigating the issue', record_id=report2.id)
+        resolution1 = CorruptionResolution(status='Resolved', justification='Resolved the issue', additional_comments='Additional comments for resolution 1', record_id=report1.id)
+        resolution2 = CorruptionResolution(status='Under Investigation', justification='Investigating the issue', additional_comments='Additional comments for resolution 2', record_id=report2.id)
+
         db.session.add_all([resolution1, resolution2])
         db.session.commit()
 
