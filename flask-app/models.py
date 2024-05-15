@@ -17,7 +17,7 @@ class User(db.Model, UserMixin):
     # relationships
     corruption_report = db.relationship('CorruptionReport', backref='whistleblower')
     public_petition = db.relationship('PublicPetition', backref='whistleblower')
-
+    
 
 
 class CorruptionReport(db.Model):
@@ -25,12 +25,14 @@ class CorruptionReport(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     govt_agency = db.Column(db.String(200), nullable=False)
-    county = db.Column(db.String(200), nullable=False)
-    location_url =db.Column(db.String, nullable=True)
+    county = db.Column(db.String(200), nullable=False)    
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)
     status = db.Column(db.String, default='Pending')
+    location_url = db.Column(db.String, nullable=True)
+    longitude = db.Column(db.Float, default=0.0)
+    latitude = db.Column(db.Float, default=0.0)
     # foreign keys
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     # relationships

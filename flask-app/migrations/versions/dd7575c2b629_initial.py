@@ -1,8 +1,8 @@
-"""Initial migration.
+"""initial
 
-Revision ID: a5f269cfc326
+Revision ID: dd7575c2b629
 Revises: 
-Create Date: 2024-05-11 15:40:13.234080
+Create Date: 2024-05-15 12:20:28.824447
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a5f269cfc326'
+revision = 'dd7575c2b629'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -32,11 +32,25 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('govt_agency', sa.String(length=200), nullable=False),
     sa.Column('county', sa.String(length=200), nullable=False),
-    sa.Column('location_url', sa.String(), nullable=True),
     sa.Column('title', sa.String(length=200), nullable=False),
     sa.Column('description', sa.String(length=600), nullable=False),
     sa.Column('media', sa.String(), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
+    sa.Column('location_url', sa.String(), nullable=True),
+    sa.Column('longitude', sa.Float(), nullable=True),
+    sa.Column('latitude', sa.Float(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('incident_reports',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('govt_agency', sa.String(length=200), nullable=False),
+    sa.Column('county', sa.String(length=200), nullable=False),
+    sa.Column('additional_location_info', sa.String(), nullable=True),
+    sa.Column('incident_title', sa.String(length=200), nullable=False),
+    sa.Column('incident_description', sa.String(length=600), nullable=False),
+    sa.Column('media', sa.String(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -80,6 +94,7 @@ def downgrade():
     op.drop_table('petition_resolutions')
     op.drop_table('corruption_resolutions')
     op.drop_table('public_petitions')
+    op.drop_table('incident_reports')
     op.drop_table('corruption_reports')
     op.drop_table('users')
     # ### end Alembic commands ###
