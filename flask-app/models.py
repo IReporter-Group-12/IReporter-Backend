@@ -1,10 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from sqlalchemy_serializer import SerializerMixin
+from sqlalchemy.orm import validates
+import re
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 
 db = SQLAlchemy()
-
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
@@ -29,19 +32,19 @@ class User(db.Model, UserMixin):
         else:
             return False
 
-
-
 class CorruptionReport(db.Model):
     __tablename__ = 'corruption_reports'
 
     id = db.Column(db.Integer, primary_key=True)
     govt_agency = db.Column(db.String(200), nullable=False)
-    county = db.Column(db.String(200), nullable=False)
-    location_url =db.Column(db.String, nullable=True)
+    county = db.Column(db.String(200), nullable=False)    
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)
     status = db.Column(db.String, default='Pending')
+    location_url = db.Column(db.String, nullable=True)
+    longitude = db.Column(db.Float, default=0.0)
+    latitude = db.Column(db.Float, default=0.0)
     # foreign keys
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     # relationships
@@ -60,8 +63,12 @@ class CorruptionResolution(db.Model):
 
 
 
-class PublicPetition(db.Model):
+class PublicPetition(db.Model, SerializerMixin):
     __tablename__ = 'public_petitions'
+
+    serialize_only = ('id', 'govt_agency', 'county', 'location_url', 
+                      'title', 'description', 'media', 'status', 'user_id')
+    serialize_rules = ()
 
     id = db.Column(db.Integer, primary_key=True)
     govt_agency = db.Column(db.String(200), nullable=False)
@@ -71,15 +78,22 @@ class PublicPetition(db.Model):
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)
     status = db.Column(db.String, default='Pending')
+    latitude = db.Column(db.Float, default=0.0)
+    longitude = db.Column(db.Float, default=0.0)
     # foreign keys
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     # relationships
-    petition_resolution = db.relationship('PetitionResolution', backref='related_petition')
+    resolution = db.relationship('PetitionResolution', back_populates='petition')
 
 
 
-class PetitionResolution(db.Model):
+class PetitionResolution(db.Model, SerializerMixin):
     __tablename__ = 'petition_resolutions'
+
+    serialize_only = ('id', 'status', 'justification', 'additional_comments', 
+                      'petition.id', 'petition.govt_agency', "petition.title", 'petition.description')
+    serialize_rules = ()
+
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String, nullable=False)
@@ -87,4 +101,6 @@ class PetitionResolution(db.Model):
     additional_comments = db.Column(db.String(600), nullable=True)
     # foreign keys
     record_id = db.Column(db.Integer, db.ForeignKey('public_petitions.id'))
+
+    petition = db.relationship('PublicPetition', back_populates = 'resolution')
 
