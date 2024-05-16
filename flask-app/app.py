@@ -8,6 +8,7 @@ from config import ApplicationConfig
 import cloudinary
 import cloudinary.uploader
 from models import db,CorruptionReport, CorruptionResolution, User
+
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, create_refresh_token
 from functools import wraps
 
@@ -252,13 +253,13 @@ def upload_file():
     if 'file' not in request.files:
         return jsonify ({'error': 'No file part'}), 400
     
-    files= request.files['file']
-    if files.filename=='':
+    file= request.files['file']
+    if file.filename=='':
         return jsonify ({'error': 'No selected file'}), 400
     
     try:
         #upload the file to cloudinary
-        result= cloudinary.uploader.upload(files)        
+        result= cloudinary.uploader.upload(file)        
         return jsonify ({'url': result['secure_url']})
     except Exception as e:
         return jsonify ({'error': str(e)})

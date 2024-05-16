@@ -7,60 +7,28 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-class User(db.Model, SerializerMixin):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
     fullname = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False)
-    password_hash = db.Column(db.String, nullable=False)
+    password = db.Column(db.String, nullable=False)
     id_passport_no = db.Column(db.Integer, nullable=False)
     role = db.Column(db.String, nullable=False)
+    # relationships
+    corruption_report = db.relationship('CorruptionReport', backref='whistleblower')
+    public_petition = db.relationship('PublicPetition', backref='whistleblower')
 
-    # Define relationship with corruption reports
-    corruption_reports = db.relationship('CorruptionReport', backref='whistleblower', lazy='dynamic')
-    # Define relationship with public petitions
-    public_petitions = db.relationship('PublicPetition', backref='whistleblower', lazy='dynamic')
+    def __repr__(self) -> str:
+        return f"User : {self.fullname}\nEmail : {self.email}\nIdentification No. : {self.id_passport_no}\nRole: {self.role}"
 
-    # Define serialization rules
-    serialize_rules = ('-corruption_reports.whistleblower', '-public_petitions.whistleblower')
-
-    # Validate role
-    @validates('role')
-    def validate_role(self, key, role):
-        if role not in ('citizen', 'admin'):
-            raise ValueError("Role must be either 'citizen' or 'admin'.")
-        return role
-
-    # Validate email format
-    @validates('email')
-    def validate_email(self, key, email):
-        assert '@' in email
-        assert re.match(r"[^@]+@[^@]+\.[^@]+", email), "Invalid email format"
-        return email
-
-    # Validate password format and hash it
-    @validates('password')
-    def validate_password(self, key, password):
-        assert len(password) > 8, "Password must be at least 8 characters long"
-        assert re.search(r"[A-Z]", password), "Password should contain at least one uppercase letter"
-        assert re.search(r"[a-z]", password), "Password should contain at least one lowercase letter"
-        assert re.search(r"[0-9]", password), "Password should contain at least one digit"
-        return generate_password_hash(password)
-
-    # Verify password
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-
-    # Check if user is admin
+    @property
     def is_admin(self):
-        return self.role == 'admin'
-
-    def __repr__(self):
-        return f"<User {self.fullname}, {self.email}, {self.role}>"
-
-
+        if self.role == 'admin':
+            return True
+        else:
+            return False
 
 class CorruptionReport(db.Model):
     __tablename__ = 'corruption_reports'
