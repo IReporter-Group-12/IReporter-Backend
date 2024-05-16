@@ -7,7 +7,12 @@ from flask_bcrypt import Bcrypt
 from config import ApplicationConfig
 import cloudinary
 import cloudinary.uploader
-from models import db,CorruptionReport, CorruptionResolution
+from models import db,CorruptionReport, CorruptionResolution, User
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, create_refresh_token
+from functools import wraps
+
+
+
 
 
 app = Flask(__name__)
@@ -16,14 +21,38 @@ CORS(app)
 db.init_app(app)
 migrate= Migrate(app, db)
 bcrypt = Bcrypt(app)
+# Initialize JWT manager
+jwt = JWTManager(app)
 
 @app.route('/')
 def index():
     return '<h1>Welcome to IReporter!</h1>'
 
-## CorruptionReports Routes
-from sqlalchemy.exc import IntegrityError
+# # Authentication route
+# @app.route('/login', methods=['POST'])
+# def login():
+#     data = request.json
+#     email = data.get('email')
+#     password = data.get('password')
+#     user = User.query.filter_by(email=email).first()
+#     if user and user.check_password(password):
+#         access_token = create_access_token(identity={'id': user.id, 'role': user.role})
+#         return jsonify({'access_token': access_token}), 200
+#     else:
+#         return jsonify({'message': 'Invalid email or password'}), 401
 
+        
+# # Authorization decorator
+# def admin_required(fn):
+#     @wraps(fn)
+#     def wrapper(*args, **kwargs):
+#         current_user = get_jwt_identity()
+#         if current_user['role'] != 'admin':
+#             return jsonify({'message': 'Admin permission required'}), 403
+#         return fn(*args, **kwargs)
+#     return wrapper
+
+## CorruptionReports Routes
 @app.route('/corruption_reports', methods=['POST'])
 def create_corruption_report():
     data = request.json
@@ -179,6 +208,22 @@ def get_corruption_resolution(resolution_id):
         })
     return jsonify({'error': 'Corruption resolution not found'}), 404
 
+
+# @app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
+# @jwt_required()
+# @admin_required
+# def update_corruption_resolution(resolution_id):
+#     resolution = CorruptionResolution.query.get(resolution_id)
+#     if resolution:
+#         data = request.json
+#         resolution.status = data.get('status', resolution.status)
+#         resolution.justification = data.get('justification', resolution.justification)
+#         resolution.additional_comments = data.get('additional_comments', resolution.additional_comments)
+#         db.session.commit()
+#         return jsonify({'message': 'Corruption resolution updated successfully'}), 200
+#     return jsonify({'error': 'Corruption resolution not found'}), 404
+
+
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
 def update_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
@@ -207,13 +252,13 @@ def upload_file():
     if 'file' not in request.files:
         return jsonify ({'error': 'No file part'}), 400
     
-    file= request.files['file']
-    if file.filename=='':
+    files= request.files['file']
+    if files.filename=='':
         return jsonify ({'error': 'No selected file'}), 400
     
     try:
         #upload the file to cloudinary
-        result= cloudinary.uploader.upload(file)        
+        result= cloudinary.uploader.upload(files)        
         return jsonify ({'url': result['secure_url']})
     except Exception as e:
         return jsonify ({'error': str(e)})
