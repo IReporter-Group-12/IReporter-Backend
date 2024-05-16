@@ -16,22 +16,6 @@ def seed_database():
         db.session.query(User).delete()
         db.session.commit()
 
-        #       # Create sample users
-        # for _ in range(5):
-        #     password = fake.password(length=10)
-        #     user = User(
-        #         fullname=fake.name(),
-        #         email=fake.email(),
-        #         password_hash=generate_password_hash(password),
-        #         id_passport_no=fake.random_number(digits=8),
-        #         role=fake.random_element(elements=('admin', 'citizen'))
-        #     )
-        #     db.session.add(user)
-
-        # db.session.commit()      
-
-
-
         users = [
             User(fullname="Edit Chelangat", email="edit@example.com", password_hash=bcrypt.generate_password_hash("Edit.123").decode('utf-8'), id_passport_no=12345678, role="citizen"),
             User(fullname="Rachael Njoki", email="rachael@example.com", password_hash=bcrypt.generate_password_hash("@Ra1212049").decode('utf-8'), id_passport_no=23456789, role="admin"),
@@ -97,3 +81,4 @@ def seed_database():
 
 if __name__ == '__main__':
     seed_database()
+
