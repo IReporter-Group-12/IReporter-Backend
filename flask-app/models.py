@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 
 
+
 db = SQLAlchemy()
 
 
@@ -17,6 +18,16 @@ class User(db.Model, UserMixin):
     # relationships
     corruption_report = db.relationship('CorruptionReport', backref='whistleblower')
     public_petition = db.relationship('PublicPetition', backref='whistleblower')
+
+    def __repr__(self) -> str:
+        return f"User : {self.fullname}\nEmail : {self.email}\nIdentification No. : {self.id_passport_no}\nRole: {self.role}"
+
+    @property
+    def is_admin(self):
+        if self.role == 'admin':
+            return True
+        else:
+            return False
 
 
 
