@@ -18,6 +18,7 @@ MarkupSafe==2.1.5
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 SQLAlchemy==2.0.30
+sqlalchemy-serializer==1.4.12
 typing_extensions==4.11.0
 Werkzeug==3.0.3
 zipp==3.18.1
