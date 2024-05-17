@@ -2,6 +2,7 @@ from flask import Flask, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
+from sqlalchemy.exc import IntegrityError
 from flask_bcrypt import Bcrypt
 from config import ApplicationConfig
 from models import db, PublicPetition, PetitionResolution
@@ -32,6 +33,23 @@ def public_petitions():
         return make_response(public_petitions, 200)
     
     elif request.method == 'POST':
+        existing_petition = PublicPetition.query.filter_by(
+            govt_agency=request.form.get("govt_agency"),
+            county=request.form.get("county"),
+            location_url=request.form.get("location_url"),
+            title=request.form.get("title"),
+            description=request.form.get("description"),
+            media=request.form.get("media"),
+            status=request.form.get("status"),
+            latitude=request.form.get("latitude"),
+            longitude=request.form.get("longitude"),
+            user_id=request.form.get("user_id")
+        ).first()
+
+        if existing_petition:
+            return make_response(
+                {"error": "This Intervention Record already exists."}, 409
+            )
         new_public_petition = PublicPetition(
             govt_agency=request.form.get("govt_agency"),
             county=request.form.get("county"),
@@ -44,11 +62,15 @@ def public_petitions():
             longitude=request.form.get("longitude"),
             user_id=request.form.get("user_id")
         )
-        db.session.add(new_public_petition)
-        db.session.commit()
+        db.session.add(new_public_petition) 
 
-        response = {"message": "Successfully created"}
-        return make_response(response, 201)
+        try:
+            db.session.commit()
+            response = {"message": "Successfully created"}
+            return make_response(response, 201)
+        except IntegrityError:
+            return {"error": "This error occured due to database integrity issues."}
+    
     
 @app.route('/petition_resolutions', methods=['GET', 'POST'])
 def petition_resolutions():
@@ -60,6 +82,18 @@ def petition_resolutions():
         return make_response(petition_resolutions, 200)
     
     elif request.method == 'POST':
+        existing_resolution = PetitionResolution.query.filter_by(
+            status=request.form.get("status"),
+            justification=request.form.get("justification"),
+            additional_comments=request.form.get("additional_comments"),
+            record_id=request.form.get("record_id")
+        ).first()
+
+        if existing_resolution:
+            return make_response(
+                {"error": "This resolution already exists"}, 409
+            )
+        
         new_pr = PetitionResolution(
             status=request.form.get("status"),
             justification=request.form.get("justification"),
@@ -67,11 +101,13 @@ def petition_resolutions():
             record_id=request.form.get("record_id")
         )
         db.session.add(new_pr)
-        db.session.commit()
-
-        return make_response({
-            "message": "Successfully created"
-        }, 201)
+        try:
+            db.session.commit()
+            return make_response({
+                "message": "Successfully created"
+            }, 201)
+        except IntegrityError:
+            return {"error": "This error occured due to database integrity issues."}
     
 @app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
 def public_petition(id):
@@ -90,11 +126,13 @@ def public_petition(id):
                 setattr(public_petition, attr, request.form.get(attr))
             
             db.session.add(public_petition)
-            db.session.commit()
-
-            return make_response(
-                {"message": "Intervention successfully updated"}, 200
-            )
+            try:
+                db.session.commit()
+                return make_response(
+                    {"message": "Intervention successfully updated"}, 200
+                )
+            except IntegrityError:
+                return {"error": "This error occured due to database integrity issues"}
         
         elif request.method == "DELETE":
             db.session.delete(public_petition)
@@ -118,11 +156,13 @@ def petition_resolution(id):
                 setattr(pr, attr, request.form.get(attr))
             
             db.session.add(pr)
-            db.session.commit()
-
-            return make_response({
-                "message": "Resolution successfully updated"
-            }, 200)
+            try:
+                db.session.commit()
+                return make_response({
+                    "message": "Resolution successfully updated"
+                }, 200)
+            except IntegrityError:
+                return {"error": "This error occured due to database integrity issues."}
         
         elif request.method == 'DELETE':
             db.session.delete(pr)

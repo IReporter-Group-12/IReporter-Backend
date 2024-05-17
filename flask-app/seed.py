@@ -4,14 +4,17 @@ from models import db, PetitionResolution, PublicPetition, User, CorruptionRepor
 from faker import Faker
 from random import randint, choice as rc
 
-def seed_db():
+if __name__ == "__main__":
     with app.app_context():
 
         fake = Faker()
 
-        User.query.delete()
+        
         PetitionResolution.query.delete()
         PublicPetition.query.delete()
+        CorruptionResolution.query.delete()
+        CorruptionReport.query.delete()
+        User.query.delete()
 
         users = []
         roles=["user", "admin"]
@@ -34,12 +37,10 @@ def seed_db():
         db.session.add_all(users)
         db.session.commit()
 
-        user_ids = [user.id for user in users]
+        user_ids = [user.id for user in User.query.all()]
+        print(user_ids)
 
         petitions = []
-        p_resolutions = []
-        corruptions = []
-        c_resolutions = []
 
         ministries = ["Ministry of Interior and National Administration", 
                     "Ministry of Defense", 
@@ -76,6 +77,8 @@ def seed_db():
         ))
         db.session.add_all(petitions)
 
+        corruptions = []
+
         corruptions.append(CorruptionReport(
             govt_agency=rc(ministries),
             county=fake.country(),
@@ -95,10 +98,10 @@ def seed_db():
             user_id=rc(user_ids)
         ))
         db.session.add_all(corruptions)
-        db.session.commit()
 
-        p_record_ids = [petition.id for petition in petitions]
-        c_record_ids = [corruption.id for corruption in corruptions]
+
+        p_resolutions = []
+        p_record_ids = [petition.id for petition in PublicPetition.query.all()]
 
         p_resolutions.append(PetitionResolution(
             status=rc(statuses),
@@ -113,6 +116,10 @@ def seed_db():
             record_id=rc(p_record_ids)
         ))
         db.session.add_all(p_resolutions)
+
+
+        c_resolutions = []
+        c_record_ids = [corruption.id for corruption in CorruptionReport.query.all()]
 
         c_resolutions.append(CorruptionResolution(
             status=rc(statuses),
@@ -129,9 +136,6 @@ def seed_db():
 
         db.session.add_all(c_resolutions)
         db.session.commit()
-
-if __name__ == "__main__":
-    seed_db()
 
 
     
