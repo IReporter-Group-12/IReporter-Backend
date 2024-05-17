@@ -36,7 +36,6 @@ def public_petitions():
         existing_petition = PublicPetition.query.filter_by(
             govt_agency=request.form.get("govt_agency"),
             county=request.form.get("county"),
-            location_url=request.form.get("location_url"),
             title=request.form.get("title"),
             description=request.form.get("description"),
             media=request.form.get("media"),
@@ -53,7 +52,6 @@ def public_petitions():
         new_public_petition = PublicPetition(
             govt_agency=request.form.get("govt_agency"),
             county=request.form.get("county"),
-            location_url=request.form.get("location_url"),
             title=request.form.get("title"),
             description=request.form.get("description"),
             media=request.form.get("media"),

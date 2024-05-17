@@ -53,14 +53,13 @@ class CorruptionResolution(db.Model):
 class PublicPetition(db.Model, SerializerMixin):
     __tablename__ = 'public_petitions'
 
-    serialize_only = ('id', 'govt_agency', 'county', 'location_url', 
+    serialize_only = ('id', 'govt_agency', 'county', 
                       'title', 'description', 'media', 'status', 'user_id')
     serialize_rules = ()
 
     id = db.Column(db.Integer, primary_key=True)
     govt_agency = db.Column(db.String(200), nullable=False)
     county = db.Column(db.String(200), nullable=False)
-    location_url =db.Column(db.String, nullable=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)

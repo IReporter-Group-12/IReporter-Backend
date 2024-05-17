@@ -56,7 +56,6 @@ if __name__ == "__main__":
         petitions.append(PublicPetition(
             govt_agency=rc(ministries),
             county=fake.country(),
-            location_url=fake.url(),
             title=fake.sentence(nb_words=4),
             description=fake.sentence(nb_words=15),
             status=rc(statuses),
@@ -67,7 +66,6 @@ if __name__ == "__main__":
         petitions.append(PublicPetition(
             govt_agency=rc(ministries),
             county=fake.country(),
-            location_url=fake.url(),
             title=fake.sentence(nb_words=4),
             description=fake.sentence(nb_words=15),
             status=rc(statuses),
@@ -82,7 +80,6 @@ if __name__ == "__main__":
         corruptions.append(CorruptionReport(
             govt_agency=rc(ministries),
             county=fake.country(),
-            location_url=fake.url(),
             title=fake.sentence(nb_words=4),
             description=fake.sentence(nb_words=15),
             status=rc(statuses),
@@ -91,7 +88,6 @@ if __name__ == "__main__":
         corruptions.append(CorruptionReport(
             govt_agency=rc(ministries),
             county=fake.country(),
-            location_url=fake.url(),
             title=fake.sentence(nb_words=4),
             description=fake.sentence(nb_words=15),
             status=rc(statuses),
