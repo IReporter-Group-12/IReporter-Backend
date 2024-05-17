@@ -64,7 +64,7 @@ class CorruptionResolution(db.Model):
 class PublicPetition(db.Model, SerializerMixin):
     __tablename__ = 'public_petitions'
 
-    serialize_only = ('id', 'govt_agency', 'county', 'location_url', 
+    serialize_only = ('id', 'govt_agency', 'county', 
                       'title', 'description', 'media', 'status', 'user_id')
     serialize_rules = ()
 

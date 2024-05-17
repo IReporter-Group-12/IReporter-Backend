@@ -216,6 +216,7 @@ def get_corruption_report(report_id):
 
 @app.route('/corruption_reports/<int:report_id>', methods=['PUT', 'PATCH'])
 @login_required
+@admin_required
 def update_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -459,6 +460,23 @@ def petition_resolution(id):
             return make_response({
                 "message": "Resolution successfully deleted"
             }) 
+
+@app.route('/upload_resolution', methods=['POST'])
+@login_required
+def upload_resolution_file():
+    if 'file' not in request.files:
+        return jsonify ({'error': 'No file part'}), 400
+    
+    file= request.files['file']
+    if file.filename=='':
+        return jsonify ({'error': 'No selected file'}), 400
+    
+    try:
+        #upload the file to cloudinary
+        result= cloudinary.uploader.upload(file)        
+        return jsonify ({'url': result['secure_url']})
+    except Exception as e:
+        return jsonify ({'error': str(e)})    
 
 
 if __name__ == '__main__':
