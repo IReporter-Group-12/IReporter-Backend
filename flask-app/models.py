@@ -54,7 +54,7 @@ class PublicPetition(db.Model, SerializerMixin):
     __tablename__ = 'public_petitions'
 
     serialize_only = ('id', 'govt_agency', 'county', 
-                      'title', 'description', 'media', 'status', 'user_id')
+                      'title', 'description', 'media', 'status', 'latitude', 'longitude', 'user_id')
     serialize_rules = ()
 
     id = db.Column(db.Integer, primary_key=True)
@@ -76,8 +76,7 @@ class PublicPetition(db.Model, SerializerMixin):
 class PetitionResolution(db.Model, SerializerMixin):
     __tablename__ = 'petition_resolutions'
 
-    serialize_only = ('id', 'status', 'justification', 'additional_comments', 
-                      'petition.id', 'petition.govt_agency', "petition.title", 'petition.description')
+    serialize_only = ('id', 'status', 'justification', 'additional_comments', 'record_id')
     serialize_rules = ()
 
 
