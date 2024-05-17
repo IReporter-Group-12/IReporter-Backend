@@ -2,7 +2,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
-import re
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -42,7 +41,6 @@ class CorruptionReport(db.Model):
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)
     status = db.Column(db.String, default='Pending')
-    location_url = db.Column(db.String, nullable=True)
     longitude = db.Column(db.Float, default=0.0)
     latitude = db.Column(db.Float, default=0.0)
     # foreign keys
@@ -73,7 +71,6 @@ class PublicPetition(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     govt_agency = db.Column(db.String(200), nullable=False)
     county = db.Column(db.String(200), nullable=False)
-    location_url =db.Column(db.String, nullable=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(600), nullable=False)
     media = db.Column(db.String)

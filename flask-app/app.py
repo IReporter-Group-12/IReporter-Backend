@@ -1,7 +1,4 @@
-from flask import Flask, request, make_response, redirect, url_for, abort, session
-
-
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, make_response, redirect, url_for, abort, jsonify
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -141,8 +138,11 @@ def admin_dashboard():
     return make_response({'message' : 'This is the admin dashboard'})
 
   
+
+
 ## CorruptionReports Routes
 @app.route('/corruption_reports', methods=['POST'])
+@login_required
 def create_corruption_report():
     data = request.json
     # Check if a similar report already exists
@@ -161,7 +161,6 @@ def create_corruption_report():
     new_report = CorruptionReport(
         govt_agency=data['govt_agency'],
         county=data['county'],
-        location_url=data.get('location_url'),
         longitude=data.get('longitude'),
         latitude=data.get('latitude'),
         title=data['title'],
@@ -180,13 +179,13 @@ def create_corruption_report():
         return jsonify({'error': 'Failed to create corruption report due to database integrity error'}), 500
 
 @app.route('/corruption_reports', methods=['GET'])
+@login_required
 def get_all_corruption_reports():
     reports = CorruptionReport.query.all()
     return jsonify([{
         'id': report.id,
         'govt_agency': report.govt_agency,
         'county': report.county,
-        'location_url': report.location_url,
         'longitude': report.longitude,
         'latitude': report.latitude,
         'title': report.title,
@@ -197,6 +196,7 @@ def get_all_corruption_reports():
     } for report in reports]), 200
 
 @app.route('/corruption_reports/<int:report_id>', methods=['GET'])
+@login_required
 def get_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -204,7 +204,6 @@ def get_corruption_report(report_id):
             'id': report.id,
             'govt_agency': report.govt_agency,
             'county': report.county,
-            'location_url': report.location_url,
             'longitude': report.longitude,
             'latitude': report.latitude,
             'title': report.title,
@@ -216,13 +215,13 @@ def get_corruption_report(report_id):
     return jsonify({'error': 'Corruption report not found'}), 404
 
 @app.route('/corruption_reports/<int:report_id>', methods=['PUT', 'PATCH'])
+@login_required
 def update_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
         data = request.json
         report.govt_agency = data.get('govt_agency', report.govt_agency)
         report.county = data.get('county', report.county)
-        report.location_url = data.get('location_url', report.location_url)
         report.longitude = data.get('longitude', report.longitude)
         report.latitude = data.get('latitude', report.latitude)
         report.title = data.get('title', report.title)
@@ -234,6 +233,7 @@ def update_corruption_report(report_id):
     return jsonify({'error': 'Corruption report not found'}), 404
 
 @app.route('/corruption_reports/<int:report_id>', methods=['DELETE'])
+@login_required
 def delete_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -243,8 +243,10 @@ def delete_corruption_report(report_id):
     return jsonify({'error': 'Corruption report not found'}), 404
 
 
+
 ## CorruptionResolution Routes
 @app.route('/corruption_resolutions', methods=['POST'])
+@login_required
 def create_corruption_resolution():
     data = request.json
     existing_resolution = CorruptionResolution.query.filter_by(
@@ -274,6 +276,7 @@ def create_corruption_resolution():
 
 
 @app.route('/corruption_resolutions', methods=['GET'])
+@login_required
 def get_all_corruption_resolutions():
     resolutions = CorruptionResolution.query.all()
     return jsonify([{
@@ -285,6 +288,7 @@ def get_all_corruption_resolutions():
     } for resolution in resolutions]), 200
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['GET'])
+@login_required
 def get_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -299,6 +303,7 @@ def get_corruption_resolution(resolution_id):
 
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
+@login_required
 def update_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -311,6 +316,7 @@ def update_corruption_resolution(resolution_id):
     return jsonify({'error': 'Corruption resolution not found'}), 404
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['DELETE'])
+@login_required
 def delete_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -322,6 +328,7 @@ def delete_corruption_resolution(resolution_id):
 from utils import cloudconfig
 cloudconfig
 @app.route('/upload_report', methods=['POST'])
+@login_required
 def upload_file():
     if 'file' not in request.files:
         return jsonify ({'error': 'No file part'}), 400
@@ -339,7 +346,9 @@ def upload_file():
 
 
 
+## Public Petitions
 @app.route('/public_petitions', methods=['GET', 'POST'])
+@login_required
 def public_petitions():
     
     if request.method == 'GET':
@@ -352,7 +361,6 @@ def public_petitions():
         new_public_petition = PublicPetition(
             govt_agency=request.form.get("govt_agency"),
             county=request.form.get("county"),
-            location_url=request.form.get("location_url"),
             title=request.form.get("title"),
             description=request.form.get("description"),
             media=request.form.get("media"),
@@ -368,6 +376,7 @@ def public_petitions():
         return make_response(response, 201)
     
 @app.route('/petition_resolutions', methods=['GET', 'POST'])
+@login_required
 def petition_resolutions():
     
     if request.method == 'GET':
@@ -391,6 +400,7 @@ def petition_resolutions():
         }, 201)
     
 @app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
+@login_required
 def public_petition(id):
     public_petition = PublicPetition.query.filter(PublicPetition.id==id).first()
 
@@ -420,6 +430,7 @@ def public_petition(id):
             return make_response({"message": "Intervention successfully deleted"}, 200)
         
 @app.route('/petition_resolutions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
+@login_required
 def petition_resolution(id):
     pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
     if pr == None:

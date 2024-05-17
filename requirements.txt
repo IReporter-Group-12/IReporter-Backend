@@ -24,6 +24,6 @@ sqlalchemy-serializer==1.4.12
 typing_extensions==4.11.0
 Werkzeug==3.0.3
 zipp==3.18.1
-flask_jwt_extended==4.0.2
+
 
 
