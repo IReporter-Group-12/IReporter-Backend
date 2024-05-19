@@ -17,12 +17,12 @@ def seed_database():
         db.session.commit()
 
         users = [
-            User(fullname="Edit Chelangat", email="edit@example.com", password_hash=bcrypt.generate_password_hash("Edit.123").decode('utf-8'), id_passport_no=12345678, role="citizen"),
-            User(fullname="Rachael Njoki", email="rachael@example.com", password_hash=bcrypt.generate_password_hash("@Ra1212049").decode('utf-8'), id_passport_no=23456789, role="admin"),
-            User(fullname="Michelle Nasisiri", email="michelle@example.com", password_hash=bcrypt.generate_password_hash("Michelle.123").decode('utf-8'), id_passport_no=34567890, role="admin"),
-            User(fullname="Victor Muteithia", email="victor@example.com", password_hash=bcrypt.generate_password_hash("Victor.123").decode('utf-8'), id_passport_no=45678901, role="citizen"),
-            User(fullname="Victor Njoroge", email="victor2@example.com", password_hash=bcrypt.generate_password_hash("Victor2.123").decode('utf-8'), id_passport_no=56789012, role="citizen"),
-            User(fullname="Ann Irungu", email="ann@example.com", password_hash=bcrypt.generate_password_hash("Ann.123").decode('utf-8'), id_passport_no=67890123, role="citizen")
+            User(fullname="Edit Chelangat", email="edit@example.com", password=bcrypt.generate_password_hash("Edit.123").decode('utf-8'), id_passport_no=12345678, role="user"),
+            User(fullname="Rachael Njoki", email="rachael@example.com", password=bcrypt.generate_password_hash("@Ra1212049").decode('utf-8'), id_passport_no=23456789, role="admin"),
+            User(fullname="Michelle Nasisiri", email="michelle@example.com", password=bcrypt.generate_password_hash("Michelle.123").decode('utf-8'), id_passport_no=34567890, role="admin"),
+            User(fullname="Victor Muteithia", email="victor@example.com", password=bcrypt.generate_password_hash("Victor.123").decode('utf-8'), id_passport_no=45678901, role="user"),
+            User(fullname="Victor Njoroge", email="victor2@example.com", password=bcrypt.generate_password_hash("Victor2.123").decode('utf-8'), id_passport_no=56789012, role="user"),
+            User(fullname="Ann Irungu", email="ann@example.com", password=bcrypt.generate_password_hash("Ann.123").decode('utf-8'), id_passport_no=67890123, role="user")
         ]
 
         db.session.add_all(users)

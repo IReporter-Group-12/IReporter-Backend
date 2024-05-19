@@ -127,7 +127,35 @@ def logout():
 @app.route('/user_dashboard', methods=['GET'])
 @login_required
 def user_dashboard():
-    return make_response({'message' : 'This is the user dashboard'})
+    uid = current_user.id
+    corruptions = CorruptionReport.query.filter_by(user_id=uid).all()
+    petitions = PublicPetition.query.filter_by(user_id=uid).all()
+    
+    corruption_list = {[
+        f'''Govt_agency: {report.govt_agency},
+        County: {report.county},
+        Title: {report.title},
+        Description: {report.description},
+        Media: {report.media},
+        Status: {report.status},
+        Longitude: {report.longitude},
+        Latitude: {report.latitude}
+        '''
+        for report in corruptions]}
+    
+    petition_list = {[
+        f'''Govt_agency: {report.govt_agency},
+        County: {report.county},
+        Title: {report.title},
+        Description: {report.description},
+        Media: {report.media},
+        Status: {report.status},
+        Longitude: {report.longitude},
+        Latitude: {report.latitude}
+        '''
+        for report in petitions]}
+
+    return make_response({petition_list, corruption_list}), 200
 
 
 # admin dashboard route
