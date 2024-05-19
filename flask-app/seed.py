@@ -68,16 +68,6 @@ def seed_database():
 
         db.session.commit()
 
-        # Create sample petition resolutions
-        for petition in PublicPetition.query.all():
-            resolution = PetitionResolution(
-                status=fake.random_element(elements=('Resolved', 'Under Review')),
-                justification=fake.sentence(),
-                record_id=petition.id
-            )
-            db.session.add(resolution)
-
-        db.session.commit()
 
 if __name__ == '__main__':
     seed_database()
