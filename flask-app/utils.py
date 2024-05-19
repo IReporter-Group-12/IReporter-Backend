@@ -1,7 +1,10 @@
 import cloudinary
 
-cloudconfig = cloudinary.config(
-    cloud_name='dcy2uoc74',
-    api_key='215291489789391',
-    api_secret='sHCCuv6Y-WbIUa3RNdxxflcdPxU'
-)
+
+cloudinary_config = cloudinary.config(
+        cloud_name = "dntrvpmzh",
+        api_key = "783675135876448",
+        api_secret = "DGPY1qXb5tkzdaU2Cw_sPOZyB0s",
+        # secure=True
+    )
+
