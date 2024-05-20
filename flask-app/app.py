@@ -1,22 +1,30 @@
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 from flask import Flask, request, make_response, redirect, url_for, abort, jsonify
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_bcrypt import Bcrypt
-from config import ApplicationConfig
+from config import cloudconfig
+cloudconfig
 import cloudinary
 import cloudinary.uploader
 from models import db, CorruptionReport, CorruptionResolution, User, PublicPetition, PetitionResolution
 from functools import wraps
-from utils import cloudconfig
-cloudconfig
+from utils import DATABASE_URI
 
 
 
 # initiate flask app
 app = Flask(__name__)
-app.config.from_object(ApplicationConfig)
+app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key') 
+# app.config.from_object(ApplicationConfig)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.json.compact = False
 CORS(app)
 
 # initiate 3rd party services
@@ -346,7 +354,7 @@ def upload_file():
         return jsonify ({'error': str(e)})
 
 
-
+## PUblic Petitions Routes
 @app.route('/public_petitions', methods=['GET', 'POST'])
 def public_petitions():
     
