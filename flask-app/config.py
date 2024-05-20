@@ -10,5 +10,5 @@ class ApplicationConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SQLALCHEMY_ECHO = False
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost/ireporter-db'
+    SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URI']
 
