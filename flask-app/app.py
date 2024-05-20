@@ -12,8 +12,6 @@ from models import db, CorruptionReport, CorruptionResolution, User, PublicPetit
 from functools import wraps
 
 
-
-
 # initiate flask app
 app = Flask(__name__)
 app.config.from_object(ApplicationConfig)
@@ -125,6 +123,24 @@ def logout():
   
 
 ## CorruptionReports Routes
+@app.route('/corruption_reports', methods=['GET'])
+@admin_required
+@login_required
+def get_all_corruption_reports():
+    reports = CorruptionReport.query.all()
+    return jsonify([{
+        'id': report.id,
+        'govt_agency': report.govt_agency,
+        'county': report.county,
+        'longitude': report.longitude,
+        'latitude': report.latitude,
+        'title': report.title,
+        'description': report.description,
+        'media': report.media,
+        'status': report.status,
+        'user_id': report.user_id
+    } for report in reports]), 200
+
 @app.route('/corruption_reports', methods=['POST'])
 @login_required
 def create_corruption_report():
@@ -162,22 +178,6 @@ def create_corruption_report():
         db.session.rollback()
         return jsonify({'error': 'Failed to create corruption report due to database integrity error'}), 500
 
-@app.route('/corruption_reports', methods=['GET'])
-@login_required
-def get_all_corruption_reports():
-    reports = CorruptionReport.query.all()
-    return jsonify([{
-        'id': report.id,
-        'govt_agency': report.govt_agency,
-        'county': report.county,
-        'longitude': report.longitude,
-        'latitude': report.latitude,
-        'title': report.title,
-        'description': report.description,
-        'media': report.media,
-        'status': report.status,
-        'user_id': report.user_id
-    } for report in reports]), 200
 
 @app.route('/corruption_reports/<int:report_id>', methods=['GET'])
 @login_required
@@ -230,6 +230,7 @@ def delete_corruption_report(report_id):
 
 ## CorruptionResolution Routes
 @app.route('/corruption_resolutions', methods=['GET'])
+@admin_required
 @login_required
 def get_all_corruption_resolutions():
     resolutions = CorruptionResolution.query.all()
@@ -454,6 +455,7 @@ def petition_resolutions():
             }, 201)
         except IntegrityError:
             return {"error": "This error occured due to database integrity issues."}
+
 
 @app.route('/petition_resolutions/<int:id>', methods=['GET'])
 @login_required
