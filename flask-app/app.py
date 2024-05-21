@@ -115,7 +115,7 @@ def login():
     
 # logout view
 @app.route('/logout', methods=['POST'])
-@login_required
+# @login_required
 def logout():
     print(current_user)
     logout_user()
@@ -124,8 +124,8 @@ def logout():
 
 ## CorruptionReports Routes
 @app.route('/corruption_reports', methods=['GET'])
-@admin_required
-@login_required
+# @admin_required
+# @login_required
 def get_all_corruption_reports():
     reports = CorruptionReport.query.all()
     return jsonify([{
@@ -180,7 +180,7 @@ def create_corruption_report():
 
 
 @app.route('/corruption_reports/<int:report_id>', methods=['GET'])
-@login_required
+# @login_required
 def get_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -199,7 +199,7 @@ def get_corruption_report(report_id):
     return jsonify({'error': 'Corruption report not found'}), 404
 
 @app.route('/corruption_reports/<int:report_id>', methods=['PUT', 'PATCH'])
-@login_required
+# @login_required
 def update_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -217,7 +217,7 @@ def update_corruption_report(report_id):
     return jsonify({'error': 'Corruption report not found'}), 404
 
 @app.route('/corruption_reports/<int:report_id>', methods=['DELETE'])
-@login_required
+# @login_required
 def delete_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
@@ -230,8 +230,8 @@ def delete_corruption_report(report_id):
 
 ## CorruptionResolution Routes
 @app.route('/corruption_resolutions', methods=['GET'])
-@admin_required
-@login_required
+# @admin_required
+# @login_required
 def get_all_corruption_resolutions():
     resolutions = CorruptionResolution.query.all()
     return jsonify([{
@@ -244,8 +244,8 @@ def get_all_corruption_resolutions():
 
 
 @app.route('/corruption_resolutions', methods=['POST'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def create_corruption_resolution():
     data = request.json
     existing_resolution = CorruptionResolution.query.filter_by(
@@ -275,7 +275,7 @@ def create_corruption_resolution():
 
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['GET'])
-@login_required
+# @login_required
 def get_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -290,8 +290,8 @@ def get_corruption_resolution(resolution_id):
 
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def update_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -304,8 +304,8 @@ def update_corruption_resolution(resolution_id):
     return jsonify({'error': 'Corruption resolution not found'}), 404
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['DELETE'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def delete_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -316,7 +316,7 @@ def delete_corruption_resolution(resolution_id):
 
 cloudinary_config
 @app.route('/upload_report', methods=['POST'])
-@login_required
+# @login_required
 def upload_file():
     if 'file' not in request.files:
         return jsonify ({'error': 'No file part'}), 400
@@ -382,12 +382,12 @@ def public_petitions():
             response = {"message": "Successfully created"}
             return make_response(response, 201)
         except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}
+            return {"error": "This error occured due to database integrity issues."}, 500
     
     
     
 @app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
-@login_required
+# @login_required
 def public_petition(id):
     public_petition = PublicPetition.query.filter(PublicPetition.id==id).first()
 
@@ -410,7 +410,7 @@ def public_petition(id):
                     {"message": "Intervention successfully updated"}, 200
                 )
             except IntegrityError:
-                return {"error": "This error occured due to database integrity issues"}
+                return {"error": "This error occured due to database integrity issues"}, 500
         
         elif request.method == "DELETE":
             db.session.delete(public_petition)
@@ -420,8 +420,8 @@ def public_petition(id):
         
 
 @app.route('/petition_resolutions', methods=['GET', 'POST'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def petition_resolutions():
     
     if request.method == 'GET':
@@ -454,11 +454,11 @@ def petition_resolutions():
                 "message": "Successfully created"
             }, 201)
         except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}
+            return {"error": "This error occured due to database integrity issues."}, 500
 
 
 @app.route('/petition_resolutions/<int:id>', methods=['GET'])
-@login_required
+# @login_required
 def get_petition_resolution(id):
     pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
     if pr == None:
@@ -471,8 +471,8 @@ def get_petition_resolution(id):
         
 
 @app.route('/petition_resolutions/<int:id>', methods=['PATCH', 'DELETE'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def petition_resolution_operations(id):
     pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
     if pr == None:
@@ -490,7 +490,7 @@ def petition_resolution_operations(id):
                     "message": "Resolution successfully updated"
                 }, 200)
             except IntegrityError:
-                return {"error": "This error occured due to database integrity issues."}
+                return {"error": "This error occured due to database integrity issues."}, 500
         
         elif request.method == 'DELETE':
             db.session.delete(pr)
