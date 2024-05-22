@@ -204,7 +204,7 @@ def create_corruption_report():
 def get_corruption_report(report_id):
     report = CorruptionReport.query.get(report_id)
     if report:
-        return jsonify({
+        return jsonify([{
             'id': report.id,
             'govt_agency': report.govt_agency,
             'county': report.county,
@@ -215,7 +215,7 @@ def get_corruption_report(report_id):
             'media': report.media,
             'status': report.status,
             'user_id': report.user_id
-        }), 200
+    }]), 200
     return jsonify({'error': 'Corruption report not found'}), 404
 
 @app.route('/corruption_reports/<int:report_id>', methods=['PUT', 'PATCH'])
@@ -356,7 +356,7 @@ def upload_file():
 
 ## Public Petitions
 @app.route('/public_petitions', methods=['GET', 'POST'])
-@login_required
+# @login_required
 def public_petitions():
     
     if request.method == 'GET':
@@ -416,7 +416,7 @@ def public_petition(id):
     
     else:
         if request.method == 'GET':
-            response = make_response(public_petition.to_dict(), 200)
+            response = make_response([public_petition.to_dict()], 200)
             return response
         
         elif request.method == 'PATCH':
