@@ -48,11 +48,12 @@ def load_user(user_id):
 def user_register():
     data = request.json
 
-    fullname= data.get('fullname')
+    fullname= data.get('fullName')
     email = data.get('email')
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     id_passport_no = data.get('id_passport_no')
+    profile_image = data.get('profileImage', './assets/default.png')
     role = 'user'
 
     # ensure email is unique
@@ -61,22 +62,29 @@ def user_register():
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
     if fullname and email and hashed_password and id_passport_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, role=role)
+        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, profile_image=profile_image, role=role)
         db.session.add(new_user)
         db.session.commit()
 
-        return make_response({'message' : 'Registration successful!'}, 201)
+        return make_response({'message' : 'Registration successful!',
+                            'username' : new_user.fullname,
+                            'user_id' : new_user.id,
+                            'role' : new_user.role}, 201)
+    else:
+        return make_response({'error' : 'You have entered incorrect data. Please try again.'}, 400)
+
 
 # admin registration route
 @app.route('/admin/register', methods=['POST'])
 def admin_register():
     data = request.json
 
-    fullname= data.get('fullname')
+    fullname= data.get('fullName')
     email = data.get('email')
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    id_passport_no = data.get('id_passport_no')
+    staff_no = data.get('staff_no')
+    profile_image = data.get('profileImage', './assets/default.png')
     role = 'admin'
 
     # ensure email is unique
@@ -84,12 +92,17 @@ def admin_register():
     if existing_user:
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
-    if fullname and email and hashed_password and id_passport_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, role=role)
+    if fullname and email and hashed_password and staff_no and role:
+        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=staff_no, profile_image=profile_image, role=role)
         db.session.add(new_user)
         db.session.commit()
 
-        return make_response({'message' : 'Registration successful!'}, 201)
+        return make_response({'message' : 'Registration successful!',
+                            'username' : new_user.fullname,
+                            'user_id' : new_user.id,
+                            'role' : new_user.role}, 201)
+    else:
+        return make_response({'error' : 'You have entered incorrect data. Please try again.'}, 400)
 
 
 # login view
@@ -105,10 +118,17 @@ def login():
     if user and bcrypt.check_password_hash(user.password, password):
         login_user(user)
         if current_user.is_admin:
-            # redirect(url_for('admin_dashboard'))
-            return make_response({'message' : 'Admin logged in successfully!'}, 200)
+            return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
+                              'user_id' : current_user.id,
+                              'username' : current_user.fullname,
+                              'email' : current_user.email,
+                              'role' : current_user.role}, 200)
         
-        return make_response({'message' : 'User logged in successfully!'}, 200)
+        return make_response({'message' : f'Login for User {current_user.fullname} successful!',
+                              'user_id' : current_user.id,
+                              'username' : current_user.fullname,
+                              'email' : current_user.email,
+                              'role' : current_user.role}, 200)
     else:
         return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
 
@@ -119,7 +139,7 @@ def login():
 def logout():
     print(current_user)
     logout_user()
-    return make_response({'message' : 'User logged out successfully!'}, 200)
+    return make_response({'message' : 'User has been logged out successfully!'}, 200)
   
 
 ## CorruptionReports Routes

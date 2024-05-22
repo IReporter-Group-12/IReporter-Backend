@@ -16,6 +16,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(200), unique=True, nullable=False)
     password = db.Column(db.String, nullable=False)
     id_passport_no = db.Column(db.Integer, nullable=False)
+    profile_image = db.Column(db.String, nullable=True)
     role = db.Column(db.String, nullable=False)
     # relationships
     corruption_report = db.relationship('CorruptionReport', backref='whistleblower')
