@@ -370,56 +370,62 @@ def upload_file():
 
 ## Public Petitions
 @app.route('/public_petitions', methods=['GET', 'POST'])
-@login_required
-def public_petitions():
-    
+def handle_public_petitions():
     if request.method == 'GET':
         public_petitions = []
         for public_petition in PublicPetition.query.all():
             public_petitions.append(public_petition.to_dict())
-        return make_response(public_petitions, 200)
+        return jsonify(public_petitions), 200
     
     elif request.method == 'POST':
+        data = request.json
+
+        if 'user_id' not in data:
+            return jsonify({'error': 'Missing user_id'}), 400
+
+        # Ensure user_id is valid
+        user = User.query.get(data['user_id'])
+        if not user:
+            return jsonify({'error': 'Invalid user ID'}), 400
+
+        # Check if a similar petition already exists
         existing_petition = PublicPetition.query.filter_by(
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            media=request.json.get("media"),
-            status=request.json.get("status"),
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-            user_id=request.json.get("user_id")
+            govt_agency=data['govt_agency'],
+            county=data['county'],
+            title=data['title'],
+            description=data['description'],
+            user_id=data['user_id']
         ).first()
 
         if existing_petition:
-            return make_response(
-                {"error": "This Intervention Record already exists."}, 409
-            )
+            return jsonify({'error': 'Public petition already exists'}), 409
+
+        # Print statement to output user_id
+        print(f"Creating a new public petition with user_id: {data['user_id']}")
+
+        # Create a new public petition
         new_public_petition = PublicPetition(
-
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            media=request.json.get("media"),
-            status=request.json.get("status"),
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-            user_id=request.json.get("user_id")
-
+            govt_agency=data['govt_agency'],
+            county=data['county'],
+            longitude=float(data.get('longitude', 0.0)),
+            latitude=float(data.get('latitude', 0.0)),
+            title=data['title'],
+            description=data['description'],
+            media=','.join(data.get('media', [])),
+            status=data.get('status', 'Pending'),
+            user_id=data['user_id']
         )
-        db.session.add(new_public_petition) 
 
+        db.session.add(new_public_petition)
         try:
             db.session.commit()
-            response = {"message": "Successfully created"}
-            return make_response(response, 201)
-        except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}
-    
-    
-    
+            return jsonify({'message': 'Public petition created successfully', 'petition_id': new_public_petition.id}), 201
+        except IntegrityError as e:
+            db.session.rollback()
+            return jsonify({'error': 'Failed to create public petition due to database integrity error: {}'.format(str(e))}), 500
+
+
+
 @app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
 @login_required
 def public_petition(id):
@@ -454,8 +460,8 @@ def public_petition(id):
         
 
 @app.route('/petition_resolutions', methods=['GET', 'POST'])
-@login_required
-@admin_required
+# @login_required
+# @admin_required
 def petition_resolutions():
     
     if request.method == 'GET':

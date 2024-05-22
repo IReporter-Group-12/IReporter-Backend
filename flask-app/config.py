@@ -1,9 +1,13 @@
-import cloudinary
+from dotenv import load_dotenv
+import os
+import psycopg2
 
+load_dotenv()
 
-cloudconfig = cloudinary.config(
-    cloud_name='dcy2uoc74',
-    api_key='215291489789391',
-    api_secret='sHCCuv6Y-WbIUa3RNdxxflcdPxU'
-)
-    # SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost/ireporter-db'
+class ApplicationConfig:
+    SECRET_KEY =  os.environ['SECRET_KEY']
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    SQLALCHEMY_ECHO = False
+    SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URI']
