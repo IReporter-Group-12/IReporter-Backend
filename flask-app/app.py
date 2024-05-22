@@ -1,37 +1,29 @@
-import os
-
-from dotenv import load_dotenv
-load_dotenv()
-from flask import Flask, request, make_response, redirect, url_for, abort, jsonify
+from flask import Flask, request, make_response, abort, jsonify, redirect, url_for
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_bcrypt import Bcrypt
-from config import cloudconfig
-cloudconfig
+from config import ApplicationConfig
 import cloudinary
 import cloudinary.uploader
+from utils import cloudinary_config
 from models import db, CorruptionReport, CorruptionResolution, User, PublicPetition, PetitionResolution
 from functools import wraps
-from utils import DATABASE_URI
-
 
 
 # initiate flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key') 
-# app.config.from_object(ApplicationConfig)
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
-CORS(app)
+app.config.from_object(ApplicationConfig)
+# CORS(app)
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
 # initiate 3rd party services
 db.init_app(app)
 migrate= Migrate(app, db)
 bcrypt = Bcrypt(app)
-  
+  # Debug print
+print(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
 # initiate flask_login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -58,11 +50,12 @@ def load_user(user_id):
 def user_register():
     data = request.json
 
-    fullname= data.get('fullname')
+    fullname= data.get('fullName')
     email = data.get('email')
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     id_passport_no = data.get('id_passport_no')
+    profile_image = data.get('profileImage', './assets/default.png')
     role = 'user'
 
     # ensure email is unique
@@ -71,22 +64,29 @@ def user_register():
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
     if fullname and email and hashed_password and id_passport_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, role=role)
+        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, profile_image=profile_image, role=role)
         db.session.add(new_user)
         db.session.commit()
 
-        return make_response({'message' : 'Registration successful!'}, 201)
+        return make_response({'message' : 'Registration successful!',
+                            'username' : new_user.fullname,
+                            'user_id' : new_user.id,
+                            'role' : new_user.role}, 201)
+    else:
+        return make_response({'error' : 'You have entered incorrect data. Please try again.'}, 400)
+
 
 # admin registration route
 @app.route('/admin/register', methods=['POST'])
 def admin_register():
     data = request.json
 
-    fullname= data.get('fullname')
+    fullname= data.get('fullName')
     email = data.get('email')
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    id_passport_no = data.get('id_passport_no')
+    staff_no = data.get('staff_no')
+    profile_image = data.get('profileImage', './assets/default.png')
     role = 'admin'
 
     # ensure email is unique
@@ -94,12 +94,17 @@ def admin_register():
     if existing_user:
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
-    if fullname and email and hashed_password and id_passport_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, role=role)
+    if fullname and email and hashed_password and staff_no and role:
+        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=staff_no, profile_image=profile_image, role=role)
         db.session.add(new_user)
         db.session.commit()
 
-        return make_response({'message' : 'Registration successful!'}, 201)
+        return make_response({'message' : 'Registration successful!',
+                            'username' : new_user.fullname,
+                            'user_id' : new_user.id,
+                            'role' : new_user.role}, 201)
+    else:
+        return make_response({'error' : 'You have entered incorrect data. Please try again.'}, 400)
 
 
 # login view
@@ -115,80 +120,34 @@ def login():
     if user and bcrypt.check_password_hash(user.password, password):
         login_user(user)
         if current_user.is_admin:
-            redirect(url_for('admin_dashboard'))
-            return make_response({'message' : 'Admin logged in successfully!'}, 200)
-        else:
-            redirect(url_for('user_dashboard'))
-        return make_response({'message' : 'User logged in successfully!'}, 200)
+            return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
+                              'user_id' : current_user.id,
+                              'username' : current_user.fullname,
+                              'email' : current_user.email,
+                              'role' : current_user.role}, 200)
+        
+        return make_response({'message' : f'Login for User {current_user.fullname} successful!',
+                              'user_id' : current_user.id,
+                              'username' : current_user.fullname,
+                              'email' : current_user.email,
+                              'role' : current_user.role}, 200)
     else:
         return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
 
     
 # logout view
 @app.route('/logout', methods=['POST'])
-@login_required
+# @login_required
 def logout():
     print(current_user)
     logout_user()
-    return make_response({'message' : 'User logged out successfully!'}, 200)
-
-
-# user dashboard route
-@app.route('/user_dashboard', methods=['GET'])
-@login_required
-def user_dashboard():
-    return make_response({'message' : 'This is the user dashboard'})
-
-
-# admin dashboard route
-@app.route('/admin_dashboard', methods=['GET'])
-@admin_required
-@login_required
-def admin_dashboard():
-    return make_response({'message' : 'This is the admin dashboard'})
-
+    return make_response({'message' : 'User has been logged out successfully!'}, 200)
   
 
 
 ## CorruptionReports Routes
-@app.route('/corruption_reports', methods=['POST'])
-@login_required
-def create_corruption_report():
-    data = request.json
-    # Check if a similar report already exists
-    existing_report = CorruptionReport.query.filter_by(
-        govt_agency=data['govt_agency'],
-        county=data['county'],
-        title=data['title'],
-        description=data['description'],
-        user_id=data['user_id']
-    ).first()
-
-    if existing_report:
-        return jsonify({'error': 'Corruption report already exists'}), 409
-
-    # Create a new report
-    new_report = CorruptionReport(
-        govt_agency=data['govt_agency'],
-        county=data['county'],
-        longitude=data.get('longitude'),
-        latitude=data.get('latitude'),
-        title=data['title'],
-        description=data['description'],
-        media=data.get('media'),
-        status=data.get('status', 'Pending'),
-        user_id=data['user_id']
-    )
-
-    db.session.add(new_report)
-    try:
-        db.session.commit()
-        return jsonify({'message': 'Corruption report created successfully', 'report_id': new_report.id}), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to create corruption report due to database integrity error'}), 500
-
 @app.route('/corruption_reports', methods=['GET'])
+@admin_required
 @login_required
 def get_all_corruption_reports():
     reports = CorruptionReport.query.all()
@@ -204,6 +163,55 @@ def get_all_corruption_reports():
         'status': report.status,
         'user_id': report.user_id
     } for report in reports]), 200
+
+@app.route('/corruption_reports', methods=['POST'])
+def create_corruption_report():
+    data = request.json
+
+    if 'user_id' not in data:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    # Ensure user_id is valid
+    user = User.query.get(data['user_id'])
+    if not user:
+        return jsonify({'error': 'Invalid user ID'}), 400
+
+    # Check if a similar report already exists
+    existing_report = CorruptionReport.query.filter_by(
+        govt_agency=data['govt_agency'],
+        county=data['county'],
+        title=data['title'],
+        description=data['description'],
+        user_id=data['user_id']
+    ).first()
+
+    if existing_report:
+        return jsonify({'error': 'Corruption report already exists'}), 409
+
+    # Print statement to output user_id
+    print(f"Creating a new report with user_id: {data['user_id']}")
+
+    # Create a new report
+    new_report = CorruptionReport(
+        govt_agency=data['govt_agency'],
+        county=data['county'],
+        longitude=float(data.get('longitude', 0.0)),
+        latitude=float(data.get('latitude', 0.0)),
+        title=data['title'],
+        description=data['description'],
+        media=','.join(data.get('media', [])),
+        status=data.get('status', 'Pending'),
+        user_id=data['user_id']
+    )
+
+    db.session.add(new_report)
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Corruption report created successfully', 'report_id': new_report.id}), 201
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create corruption report due to database integrity error: {}'.format(str(e))}), 500
+
 
 @app.route('/corruption_reports/<int:report_id>', methods=['GET'])
 @login_required
@@ -255,8 +263,23 @@ def delete_corruption_report(report_id):
 
 
 ## CorruptionResolution Routes
+@app.route('/corruption_resolutions', methods=['GET'])
+@admin_required
+@login_required
+def get_all_corruption_resolutions():
+    resolutions = CorruptionResolution.query.all()
+    return jsonify([{
+        'id': resolution.id,
+        'status': resolution.status,
+        'justification': resolution.justification,
+        'additional_comments': resolution.additional_comments,
+        'record_id': resolution.record_id
+    } for resolution in resolutions]), 200
+
+
 @app.route('/corruption_resolutions', methods=['POST'])
 @login_required
+@admin_required
 def create_corruption_resolution():
     data = request.json
     existing_resolution = CorruptionResolution.query.filter_by(
@@ -285,18 +308,6 @@ def create_corruption_resolution():
         return jsonify({'error': 'Failed to create corruption resolution due to database integrity error'}), 500
 
 
-@app.route('/corruption_resolutions', methods=['GET'])
-@login_required
-def get_all_corruption_resolutions():
-    resolutions = CorruptionResolution.query.all()
-    return jsonify([{
-        'id': resolution.id,
-        'status': resolution.status,
-        'justification': resolution.justification,
-        'additional_comments': resolution.additional_comments,
-        'record_id': resolution.record_id
-    } for resolution in resolutions]), 200
-
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['GET'])
 @login_required
 def get_corruption_resolution(resolution_id):
@@ -314,6 +325,7 @@ def get_corruption_resolution(resolution_id):
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
 @login_required
+@admin_required
 def update_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -327,6 +339,7 @@ def update_corruption_resolution(resolution_id):
 
 @app.route('/corruption_resolutions/<int:resolution_id>', methods=['DELETE'])
 @login_required
+@admin_required
 def delete_corruption_resolution(resolution_id):
     resolution = CorruptionResolution.query.get(resolution_id)
     if resolution:
@@ -335,9 +348,9 @@ def delete_corruption_resolution(resolution_id):
         return jsonify({'message': 'Corruption resolution deleted successfully'})
     return jsonify({'error': 'Corruption resolution not found'}), 404
 
-
+cloudinary_config
 @app.route('/upload_report', methods=['POST'])
-@login_required
+# @login_required
 def upload_file():
     if 'file' not in request.files:
         return jsonify ({'error': 'No file part'}), 400
@@ -354,8 +367,10 @@ def upload_file():
         return jsonify ({'error': str(e)})
 
 
-## PUblic Petitions Routes
+
+## Public Petitions
 @app.route('/public_petitions', methods=['GET', 'POST'])
+@login_required
 def public_petitions():
     
     if request.method == 'GET':
@@ -382,6 +397,7 @@ def public_petitions():
                 {"error": "This Intervention Record already exists."}, 409
             )
         new_public_petition = PublicPetition(
+
             govt_agency=request.json.get("govt_agency"),
             county=request.json.get("county"),
             title=request.json.get("title"),
@@ -391,6 +407,7 @@ def public_petitions():
             latitude=request.json.get("latitude"),
             longitude=request.json.get("longitude"),
             user_id=request.json.get("user_id")
+
         )
         db.session.add(new_public_petition) 
 
@@ -402,41 +419,6 @@ def public_petitions():
             return {"error": "This error occured due to database integrity issues."}
     
     
-@app.route('/petition_resolutions', methods=['GET', 'POST'])
-@login_required
-def petition_resolutions():
-    
-    if request.method == 'GET':
-        petition_resolutions = []
-        for petition_resolution in PetitionResolution.query.all():
-            petition_resolutions.append(petition_resolution.to_dict())
-        return make_response(petition_resolutions, 200)
-    
-    elif request.method == 'POST':
-        existing_resolution = PetitionResolution.query.filter_by(
-            status=request.json.get("status"),
-            justification=request.json.get("justification"),
-            additional_comments=request.json.get("additional_comments"),
-            record_id=request.json.get("record_id")
-        ).first()
-
-        if existing_resolution:
-            return make_response({"error": "This resolution already exists"}, 409)
-        
-        new_pr = PetitionResolution(
-            status=request.json.get("status"),
-            justification=request.json.get("justification"),
-            additional_comments=request.json.get("additional_comments"),
-            record_id=request.json.get("record_id")
-        )
-        db.session.add(new_pr)
-        try:
-            db.session.commit()
-            return make_response({
-                "message": "Successfully created"
-            }, 201)
-        except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}
     
 @app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
 @login_required
@@ -470,9 +452,48 @@ def public_petition(id):
 
             return make_response({"message": "Intervention successfully deleted"}, 200)
         
-@app.route('/petition_resolutions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
+
+@app.route('/petition_resolutions', methods=['GET', 'POST'])
 @login_required
-def petition_resolution(id):
+@admin_required
+def petition_resolutions():
+    
+    if request.method == 'GET':
+        petition_resolutions = []
+        for petition_resolution in PetitionResolution.query.all():
+            petition_resolutions.append(petition_resolution.to_dict())
+        return make_response(petition_resolutions, 200)
+    
+    elif request.method == 'POST':
+        existing_resolution = PetitionResolution.query.filter_by(
+            status=request.json.get("status"),
+            justification=request.json.get("justification"),
+            additional_comments=request.json.get("additional_comments"),
+            record_id=request.json.get("record_id")
+        ).first()
+
+        if existing_resolution:
+            return make_response({"error": "This resolution already exists"}, 409)
+        
+        new_pr = PetitionResolution(
+            status=request.json.get("status"),
+            justification=request.json.get("justification"),
+            additional_comments=request.json.get("additional_comments"),
+            record_id=request.json.get("record_id")
+        )
+        db.session.add(new_pr)
+        try:
+            db.session.commit()
+            return make_response({
+                "message": "Successfully created"
+            }, 201)
+        except IntegrityError:
+            return {"error": "This error occured due to database integrity issues."}
+
+
+@app.route('/petition_resolutions/<int:id>', methods=['GET'])
+@login_required
+def get_petition_resolution(id):
     pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
     if pr == None:
         return {"error": "Resolution record not found"}, 404
@@ -482,7 +503,17 @@ def petition_resolution(id):
             response = make_response(pr.to_dict(), 200)
             return response
         
-        elif request.method == 'PATCH':
+
+@app.route('/petition_resolutions/<int:id>', methods=['PATCH', 'DELETE'])
+@login_required
+@admin_required
+def petition_resolution_operations(id):
+    pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
+    if pr == None:
+        return {"error": "Resolution record not found"}, 404
+    
+    else:
+        if request.method == 'PATCH':
             for attr in request.json:
                 setattr(pr, attr, request.json.get(attr))
             
@@ -501,12 +532,12 @@ def petition_resolution(id):
 
             return make_response({
                 "message": "Resolution successfully deleted"
+
             })
         
 
-
+cloudinary_config       
 @app.route('/upload_resolution', methods=['POST'])
-@login_required
 def upload_resolution_file():    
     if 'file' not in request.files:
         return jsonify({"error": "Oops!! There is no file."}), 400
@@ -523,6 +554,7 @@ def upload_resolution_file():
     except Exception as e:
         return jsonify({'error':str(e)})
 
+        
 
 
 if __name__ == '__main__':
