@@ -1,4 +1,4 @@
-from flask import Flask, request, make_response, abort, jsonify
+from flask import Flask, redirect, request, make_response, abort, jsonify
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -103,31 +103,39 @@ def admin_register():
 
 
 # login view
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    data = request.json
+    if request.method == 'GET':
+        # print(request.args.get('next'))
+        if current_user.is_authenticated:
+            return redirect(request.args.get('next'))
+        else:
+            return redirect('/login')
 
-    email = data.get('email')
-    password=data.get('password')
+    if request.method == 'POST':
+        data = request.json
 
-    user = User.query.filter_by(email=email).first()
+        email = data.get('email')
+        password=data.get('password')
 
-    if user and bcrypt.check_password_hash(user.password, password):
-        login_user(user)
-        if current_user.is_admin:
-            return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
-                              'user_id' : current_user.id,
-                              'username' : current_user.fullname,
-                              'email' : current_user.email,
-                              'role' : current_user.role}, 200)
-        
-        return make_response({'message' : f'Login for User {current_user.fullname} successful!',
-                              'user_id' : current_user.id,
-                              'username' : current_user.fullname,
-                              'email' : current_user.email,
-                              'role' : current_user.role}, 200)
-    else:
-        return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
+        user = User.query.filter_by(email=email).first()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            login_user(user)
+            if current_user.is_admin:
+                return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
+                                'user_id' : current_user.id,
+                                'username' : current_user.fullname,
+                                'email' : current_user.email,
+                                'role' : current_user.role}, 200)
+            
+            return make_response({'message' : f'Login for User {current_user.fullname} successful!',
+                                'user_id' : current_user.id,
+                                'username' : current_user.fullname,
+                                'email' : current_user.email,
+                                'role' : current_user.role}, 200)
+        else:
+            return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
 
     
 # logout view
@@ -141,7 +149,7 @@ def logout():
 
 ## CorruptionReports Routes
 @app.route('/corruption_reports', methods=['GET'])
-# @admin_required
+@admin_required
 # @login_required
 def get_all_corruption_reports():
     reports = CorruptionReport.query.all()
@@ -202,7 +210,6 @@ def create_corruption_report():
 
 # this route returns all reports connected to a user
 @app.route('/corruption_reports/<int:user_id>/', methods=['GET'])
-# @admin_required
 # @login_required
 def get_corruption_report_by_user(user_id):
     reports = CorruptionReport.query.filter_by(user_id=user_id).all()
@@ -258,7 +265,7 @@ def user_update_corruption_report(report_id):
 
 
 @app.route('/admin_corruption_reports/<int:report_id>', methods=['PATCH'])
-# @admin_required
+@admin_required
 # @login_required
 def admin_update_corruption_report(report_id):
 
@@ -310,57 +317,19 @@ def upload_file():
         return jsonify ({'error': str(e)})
 
 
-
+    
 ## Public Petitions
-@app.route('/public_petitions', methods=['GET', 'POST'])
-# @login_required
-def user_get_post_public_petitions():
-    
-    if request.method == 'GET':
-        public_petitions = []
-        for public_petition in PublicPetition.query.all():
-            public_petitions.append(public_petition.to_dict())
-        return jsonify(public_petitions), 200
-    
-    elif request.method == 'POST':
-        print(request.json.get("media"))
 
-        existing_petition = PublicPetition.query.filter_by(
-            user_id=request.json.get("user_id"),
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-        ).first()
-
-        if existing_petition:
-            return make_response(
-                {"error": "This Intervention Record already exists."}, 409
-            )
-        new_public_petition = PublicPetition(
-            
-            user_id=request.json.get("user_id"),
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            status='Pending',
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-            media = request.json.get('media', [None])
-        )
-        db.session.add(new_public_petition) 
-
-        try:
-            db.session.commit()
-            response = {"message": "Successfully created"}
-            return make_response(response, 201)
-        except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}, 500
+# this route gets all public petitions
+@app.route('/public_petitions', methods=['GET'])
+@admin_required
+def admin_get_all_public_petitions():
     
-    
+    public_petitions = []
+    for public_petition in PublicPetition.query.all():
+        public_petitions.append(public_petition.to_dict())
+    return jsonify(public_petitions), 200
+
 # this route gets all the reports published by a user
 @app.route('/public_petitions/<int:user_id>/', methods=['GET'])
 # @login_required
@@ -373,6 +342,49 @@ def get_public_petitions_by_user_id(user_id):
     else:
         response = jsonify([petition.to_dict() for petition in public_petitions]), 200
         return response
+
+@app.route('/public_petitions', methods=['POST'])
+# @login_required
+def user_post_public_petitions():
+    
+    print(request.json.get("media"))
+
+    existing_petition = PublicPetition.query.filter_by(
+        user_id=request.json.get("user_id"),
+        govt_agency=request.json.get("govt_agency"),
+        county=request.json.get("county"),
+        title=request.json.get("title"),
+        description=request.json.get("description"),
+        latitude=request.json.get("latitude"),
+        longitude=request.json.get("longitude"),
+    ).first()
+
+    if existing_petition:
+        return make_response(
+            {"error": "This Intervention Record already exists."}, 409
+        )
+    new_public_petition = PublicPetition(
+        
+        user_id=request.json.get("user_id"),
+        govt_agency=request.json.get("govt_agency"),
+        county=request.json.get("county"),
+        title=request.json.get("title"),
+        description=request.json.get("description"),
+        status='Pending',
+        latitude=request.json.get("latitude"),
+        longitude=request.json.get("longitude"),
+        media = request.json.get('media', [None])
+    )
+    db.session.add(new_public_petition) 
+
+    try:
+        db.session.commit()
+        response = {"message": "Successfully created"}
+        return make_response(response, 201)
+    except IntegrityError:
+        return {"error": "This error occured due to database integrity issues."}, 500
+    
+    
         
 
 
@@ -418,7 +430,7 @@ def user_patch_delete_public_petition(id):
     
 
 @app.route('/admin_public_petitions/<int:id>', methods=['PATCH'])
-# @admin_required
+@admin_required
 # @login_required
 def admin_patch_delete_public_petition(id):
 
