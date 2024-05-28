@@ -149,7 +149,7 @@ def logout():
 
 ## CorruptionReports Routes
 @app.route('/corruption_reports', methods=['GET'])
-@admin_required
+# @admin_required
 # @login_required
 def get_all_corruption_reports():
     reports = CorruptionReport.query.all()
@@ -265,7 +265,7 @@ def user_update_corruption_report(report_id):
 
 
 @app.route('/admin_corruption_reports/<int:report_id>', methods=['PATCH'])
-@admin_required
+# @admin_required
 # @login_required
 def admin_update_corruption_report(report_id):
 
@@ -322,7 +322,7 @@ def upload_file():
 
 # this route gets all public petitions
 @app.route('/public_petitions', methods=['GET'])
-@admin_required
+# @admin_required
 def admin_get_all_public_petitions():
     
     public_petitions = []
@@ -430,7 +430,7 @@ def user_patch_delete_public_petition(id):
     
 
 @app.route('/admin_public_petitions/<int:id>', methods=['PATCH'])
-@admin_required
+# @admin_required
 # @login_required
 def admin_patch_delete_public_petition(id):
 
