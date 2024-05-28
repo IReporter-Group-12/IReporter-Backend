@@ -423,10 +423,13 @@ def user_patch_delete_public_petition(id):
                 return {"error": "This error occurred due to database integrity issues"}, 500
                     
         elif request.method == "DELETE":
-            db.session.delete(public_petition)
-            db.session.commit()
+            if public_petition:
+                db.session.delete(public_petition)
+                db.session.commit()
+                return jsonify({'message': 'Corruption report deleted successfully'}), 200
+            
+            return jsonify({'error': 'Public petition not found'}), 404
 
-            return make_response({"message": "Intervention successfully deleted"}, 200)
     
 
 @app.route('/admin_public_petitions/<int:id>', methods=['PATCH'])
