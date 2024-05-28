@@ -1,6 +1,5 @@
 from faker import Faker
-from models import db, CorruptionReport, CorruptionResolution, User, PetitionResolution, PublicPetition
-from werkzeug.security import generate_password_hash
+from models import db, CorruptionReport, User, PublicPetition
 from app import app
 from flask_bcrypt import Bcrypt
 bcrypt = Bcrypt(app)
@@ -9,25 +8,22 @@ fake = Faker()
 def seed_database():
     with app.app_context():
         # Delete existing data
-        db.session.query(CorruptionResolution).delete()
         db.session.query(CorruptionReport).delete()
-        db.session.query(PetitionResolution).delete()
         db.session.query(PublicPetition).delete()
         db.session.query(User).delete()
         db.session.commit()
 
         users = [
-            User(fullname="Edit Chelangat", email="edit@example.com", password=bcrypt.generate_password_hash("Edit.123").decode('utf-8'), id_passport_no=12345678, role="user"),
+            User(fullname="Edit Chelangat", email="edith@example.com", password=bcrypt.generate_password_hash("Edith.123").decode('utf-8'), id_passport_no=12345678, role="user"),
             User(fullname="Rachael Njoki", email="rachael@example.com", password=bcrypt.generate_password_hash("@Ra1212049").decode('utf-8'), id_passport_no=23456789, role="admin"),
-            User(fullname="Michelle Nasisiri", email="michelle@example.com", password=bcrypt.generate_password_hash("Michelle.123").decode('utf-8'), id_passport_no=34567890, role="admin"),
-            User(fullname="Victor Muteithia", email="victor@example.com", password=bcrypt.generate_password_hash("Victor.123").decode('utf-8'), id_passport_no=45678901, role="user"),
-            User(fullname="Victor Njoroge", email="victor2@example.com", password=bcrypt.generate_password_hash("Victor2.123").decode('utf-8'), id_passport_no=56789012, role="user"),
+            User(fullname="Michelle Nasirisi", email="michelle@example.com", password=bcrypt.generate_password_hash("Michelle.123").decode('utf-8'), id_passport_no=34567890, role="admin"),
+            User(fullname="Victor Muteithia", email="victorm@example.com", password=bcrypt.generate_password_hash("VictorM.123").decode('utf-8'), id_passport_no=45678901, role="user"),
+            User(fullname="Victor Njoroge", email="victorn@example.com", password=bcrypt.generate_password_hash("VictorN.123").decode('utf-8'), id_passport_no=56789012, role="admin"),
             User(fullname="Ann Irungu", email="ann@example.com", password=bcrypt.generate_password_hash("Ann.123").decode('utf-8'), id_passport_no=67890123, role="user")
         ]
-
+        
         db.session.add_all(users)
         db.session.commit()    
-        print("Done seeding!")
 
        
         # Create sample corruption reports
@@ -43,17 +39,6 @@ def seed_database():
 
         db.session.commit()
 
-        # Create sample corruption resolutions
-        for report in CorruptionReport.query.all():
-            resolution = CorruptionResolution(
-                status=fake.random_element(elements=('Resolved', 'Under Investigation')),
-                justification=fake.sentence(),
-                additional_comments=fake.paragraph(),
-                record_id=report.id
-            )
-            db.session.add(resolution)
-
-        db.session.commit()
 
         # Create sample public petitions
         for _ in range(5):  # Generate 5 public petitions
@@ -68,6 +53,7 @@ def seed_database():
 
         db.session.commit()
 
+        print("Done seeding!")
 
 if __name__ == '__main__':
     seed_database()

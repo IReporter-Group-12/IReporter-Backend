@@ -1,4 +1,4 @@
-from flask import Flask, request, make_response, abort, jsonify
+from flask import Flask, redirect, request, make_response, abort, jsonify
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -8,7 +8,7 @@ from config import ApplicationConfig
 import cloudinary
 import cloudinary.uploader
 from utils import cloudinary_config
-from models import db, CorruptionReport, CorruptionResolution, User, PublicPetition, PetitionResolution
+from models import db, CorruptionReport, User, PublicPetition
 from functools import wraps
 
 
@@ -52,8 +52,6 @@ def user_register():
     email = data.get('email')
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    id_passport_no = data.get('id_passport_no')
-    profile_image = data.get('profileImage', './assets/default.png')
     role = 'user'
 
     # ensure email is unique
@@ -61,8 +59,8 @@ def user_register():
     if existing_user:
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
-    if fullname and email and hashed_password and id_passport_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=id_passport_no, profile_image=profile_image, role=role)
+    if fullname and email and hashed_password and role:
+        new_user = User(fullname=fullname, email=email, password=hashed_password, role=role)
         db.session.add(new_user)
         db.session.commit()
 
@@ -84,7 +82,6 @@ def admin_register():
     password = data.get('password')
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     staff_no = data.get('staff_no')
-    profile_image = data.get('profileImage', './assets/default.png')
     role = 'admin'
 
     # ensure email is unique
@@ -93,7 +90,7 @@ def admin_register():
         return make_response({'error' : 'The email provided is already linked to an existing account. Please try again'}, 400)
 
     if fullname and email and hashed_password and staff_no and role:
-        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=staff_no, profile_image=profile_image, role=role)
+        new_user = User(fullname=fullname, email=email, password=hashed_password, id_passport_no=staff_no, role=role)
         db.session.add(new_user)
         db.session.commit()
 
@@ -106,31 +103,39 @@ def admin_register():
 
 
 # login view
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    data = request.json
+    if request.method == 'GET':
+        # print(request.args.get('next'))
+        if current_user.is_authenticated:
+            return redirect(request.args.get('next'))
+        else:
+            return redirect('/login')
 
-    email = data.get('email')
-    password=data.get('password')
+    if request.method == 'POST':
+        data = request.json
 
-    user = User.query.filter_by(email=email).first()
+        email = data.get('email')
+        password=data.get('password')
 
-    if user and bcrypt.check_password_hash(user.password, password):
-        login_user(user)
-        if current_user.is_admin:
-            return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
-                              'user_id' : current_user.id,
-                              'username' : current_user.fullname,
-                              'email' : current_user.email,
-                              'role' : current_user.role}, 200)
-        
-        return make_response({'message' : f'Login for User {current_user.fullname} successful!',
-                              'user_id' : current_user.id,
-                              'username' : current_user.fullname,
-                              'email' : current_user.email,
-                              'role' : current_user.role}, 200)
-    else:
-        return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
+        user = User.query.filter_by(email=email).first()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            login_user(user)
+            if current_user.is_admin:
+                return make_response({'message' : f'Login for Admin {current_user.fullname} successful!',
+                                'user_id' : current_user.id,
+                                'username' : current_user.fullname,
+                                'email' : current_user.email,
+                                'role' : current_user.role}, 200)
+            
+            return make_response({'message' : f'Login for User {current_user.fullname} successful!',
+                                'user_id' : current_user.id,
+                                'username' : current_user.fullname,
+                                'email' : current_user.email,
+                                'role' : current_user.role}, 200)
+        else:
+            return make_response({'error' : 'Password or username incorrect. Please try again.'}, 400)
 
     
 # logout view
@@ -158,20 +163,23 @@ def get_all_corruption_reports():
         'description': report.description,
         'media': report.media,
         'status': report.status,
-        'user_id': report.user_id
+        'user_id': report.user_id,
+        'admin_comments' : report.admin_comments
     } for report in reports]), 200
 
 @app.route('/corruption_reports', methods=['POST'])
-@login_required
+# @login_required
 def create_corruption_report():
     data = request.json
     # Check if a similar report already exists
     existing_report = CorruptionReport.query.filter_by(
-        govt_agency=data['govt_agency'],
-        county=data['county'],
-        title=data['title'],
-        description=data['description'],
-        user_id=data['user_id']
+        user_id=data.get("user_id"),
+        govt_agency=data.get("govt_agency"),
+        county=data.get("county"),
+        title=data.get("title"),
+        description=data.get("description"),
+        latitude=data.get("latitude"),
+        longitude=data.get("longitude"),
     ).first()
 
     if existing_report:
@@ -179,32 +187,36 @@ def create_corruption_report():
 
     # Create a new report
     new_report = CorruptionReport(
-        govt_agency=data['govt_agency'],
-        county=data['county'],
-        longitude=data.get('longitude'),
-        latitude=data.get('latitude'),
-        title=data['title'],
-        description=data['description'],
-        media=data.get('media'),
-        status=data.get('status', 'Pending'),
-        user_id=data['user_id']
+        user_id=data.get("user_id"),
+        govt_agency=data.get("govt_agency"),
+        county=data.get("county"),
+        title=data.get("title"),
+        description=data.get("description"),
+        status='Pending',
+        latitude=data.get("latitude"),
+        longitude=data.get("longitude"),
+        media = data.get('media', [None])
     )
 
     db.session.add(new_report)
     try:
         db.session.commit()
         return jsonify({'message': 'Corruption report created successfully', 'report_id': new_report.id}), 201
+    
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'Failed to create corruption report due to database integrity error'}), 500
 
 
-@app.route('/corruption_reports/<int:report_id>', methods=['GET'])
+# this route returns all reports connected to a user
+@app.route('/corruption_reports/<int:user_id>/', methods=['GET'])
 # @login_required
-def get_corruption_report(report_id):
-    report = CorruptionReport.query.get(report_id)
-    if report:
-        return jsonify({
+def get_corruption_report_by_user(user_id):
+    reports = CorruptionReport.query.filter_by(user_id=user_id).all()
+    if reports == None:
+        return jsonify({'error': 'Corruption reports not found'}), 404
+    else:
+        return jsonify([{
             'id': report.id,
             'govt_agency': report.govt_agency,
             'county': report.county,
@@ -214,125 +226,77 @@ def get_corruption_report(report_id):
             'description': report.description,
             'media': report.media,
             'status': report.status,
+            'admin_comments' : report.admin_comments,
             'user_id': report.user_id
-        }), 200
-    return jsonify({'error': 'Corruption report not found'}), 404
+    } for report in reports]), 200
+
 
 @app.route('/corruption_reports/<int:report_id>', methods=['PUT', 'PATCH'])
 # @login_required
-def update_corruption_report(report_id):
+def user_update_corruption_report(report_id):
+
     report = CorruptionReport.query.get(report_id)
+
     if report:
         data = request.json
-        report.govt_agency = data.get('govt_agency', report.govt_agency)
-        report.county = data.get('county', report.county)
-        report.longitude = data.get('longitude', report.longitude)
-        report.latitude = data.get('latitude', report.latitude)
-        report.title = data.get('title', report.title)
-        report.description = data.get('description', report.description)
-        report.media = data.get('media', report.media)
-        report.status = data.get('status', report.status)
+        if 'govt_agency' in data and data['govt_agency'] is not None:
+            report.govt_agency = data['govt_agency']
+        if 'county' in data and data['county'] is not None:
+            report.county = data['county']
+        if 'longitude' in data and data['longitude'] is not None:
+            report.longitude = data['longitude']
+        if 'latitude' in data and data['latitude'] is not None:
+            report.latitude = data['latitude']
+        if 'description' in data and data['description'] is not None:
+            report.description = data['description']
+        if 'media' in data and data['media'] is not None:
+            report.media = data['media']
+
+        try:
+            db.session.commit()
+            return make_response(
+                {"message": 'Corruption report updated successfully'}, 200
+            )
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"error": "This error occurred due to database integrity issues"}), 500
+        
+    return jsonify({'error': 'Corruption report not found'}), 404
+
+
+@app.route('/admin_corruption_reports/<int:report_id>', methods=['PATCH'])
+# @admin_required
+# @login_required
+def admin_update_corruption_report(report_id):
+
+    report = CorruptionReport.query.get(report_id)
+
+    if report:
+        data = request.json
+        if 'status' in data and data['status'] is not None:
+            report.status = data['status']
+        if 'admin_comments' in data and data['admin_comments'] is not None:
+            report.admin_comments = data['admin_comments']
+
         db.session.commit()
         return jsonify({'message': 'Corruption report updated successfully'}), 200
+    
     return jsonify({'error': 'Corruption report not found'}), 404
+
 
 @app.route('/corruption_reports/<int:report_id>', methods=['DELETE'])
 # @login_required
-def delete_corruption_report(report_id):
+def user_delete_corruption_report(report_id):
+
     report = CorruptionReport.query.get(report_id)
+
     if report:
         db.session.delete(report)
         db.session.commit()
         return jsonify({'message': 'Corruption report deleted successfully'}), 200
+    
     return jsonify({'error': 'Corruption report not found'}), 404
 
-
-
-## CorruptionResolution Routes
-@app.route('/corruption_resolutions', methods=['GET'])
-# @admin_required
-# @login_required
-def get_all_corruption_resolutions():
-    resolutions = CorruptionResolution.query.all()
-    return jsonify([{
-        'id': resolution.id,
-        'status': resolution.status,
-        'justification': resolution.justification,
-        'additional_comments': resolution.additional_comments,
-        'record_id': resolution.record_id
-    } for resolution in resolutions]), 200
-
-
-@app.route('/corruption_resolutions', methods=['POST'])
-# @login_required
-# @admin_required
-def create_corruption_resolution():
-    data = request.json
-    existing_resolution = CorruptionResolution.query.filter_by(
-        status=data['status'],
-        justification=data['justification'],
-        additional_comments=data.get('additional_comments'),
-        record_id=data['record_id']
-    ).first()
-
-    if existing_resolution:
-        return jsonify({'error': 'Corruption resolution already exists'}), 409
-
-    new_resolution = CorruptionResolution(
-        status=data['status'],
-        justification=data['justification'],
-        additional_comments=data.get('additional_comments'),
-        record_id=data['record_id']
-    )
-
-    db.session.add(new_resolution)
-    try:
-        db.session.commit()
-        return jsonify({'message': 'Corruption resolution created successfully', 'resolution_id': new_resolution.id}), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to create corruption resolution due to database integrity error'}), 500
-
-
-@app.route('/corruption_resolutions/<int:resolution_id>', methods=['GET'])
-# @login_required
-def get_corruption_resolution(resolution_id):
-    resolution = CorruptionResolution.query.get(resolution_id)
-    if resolution:
-        return jsonify({
-            'id': resolution.id,
-            'status': resolution.status,
-            'justification': resolution.justification,
-            'additional_comments': resolution.additional_comments,
-            'record_id': resolution.record_id
-        })
-    return jsonify({'error': 'Corruption resolution not found'}), 404
-
-
-@app.route('/corruption_resolutions/<int:resolution_id>', methods=['PUT', 'PATCH'])
-# @login_required
-# @admin_required
-def update_corruption_resolution(resolution_id):
-    resolution = CorruptionResolution.query.get(resolution_id)
-    if resolution:
-        data = request.json
-        resolution.status = data.get('status', resolution.status)
-        resolution.justification = data.get('justification', resolution.justification)
-        resolution.additional_comments = data.get('additional_comments', resolution.additional_comments)
-        db.session.commit()
-        return jsonify({'message': 'Corruption resolution updated successfully'})
-    return jsonify({'error': 'Corruption resolution not found'}), 404
-
-@app.route('/corruption_resolutions/<int:resolution_id>', methods=['DELETE'])
-# @login_required
-# @admin_required
-def delete_corruption_resolution(resolution_id):
-    resolution = CorruptionResolution.query.get(resolution_id)
-    if resolution:
-        db.session.delete(resolution)
-        db.session.commit()
-        return jsonify({'message': 'Corruption resolution deleted successfully'})
-    return jsonify({'error': 'Corruption resolution not found'}), 404
 
 cloudinary_config
 @app.route('/upload_report', methods=['POST'])
@@ -353,177 +317,145 @@ def upload_file():
         return jsonify ({'error': str(e)})
 
 
-
+    
 ## Public Petitions
-@app.route('/public_petitions', methods=['GET', 'POST'])
-@login_required
-def public_petitions():
-    
-    if request.method == 'GET':
-        public_petitions = []
-        for public_petition in PublicPetition.query.all():
-            public_petitions.append(public_petition.to_dict())
-        return make_response(public_petitions, 200)
-    
-    elif request.method == 'POST':
-        existing_petition = PublicPetition.query.filter_by(
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            media=request.json.get("media"),
-            status=request.json.get("status"),
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-            user_id=request.json.get("user_id")
-        ).first()
 
-        if existing_petition:
-            return make_response(
-                {"error": "This Intervention Record already exists."}, 409
-            )
-        new_public_petition = PublicPetition(
-
-            govt_agency=request.json.get("govt_agency"),
-            county=request.json.get("county"),
-            title=request.json.get("title"),
-            description=request.json.get("description"),
-            media=request.json.get("media"),
-            status=request.json.get("status"),
-            latitude=request.json.get("latitude"),
-            longitude=request.json.get("longitude"),
-            user_id=request.json.get("user_id")
-
-        )
-        db.session.add(new_public_petition) 
-
-        try:
-            db.session.commit()
-            response = {"message": "Successfully created"}
-            return make_response(response, 201)
-        except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}, 500
+# this route gets all public petitions
+@app.route('/public_petitions', methods=['GET'])
+# @admin_required
+def admin_get_all_public_petitions():
     
-    
-    
-@app.route('/public_petitions/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
+    public_petitions = []
+    for public_petition in PublicPetition.query.all():
+        public_petitions.append(public_petition.to_dict())
+    return jsonify(public_petitions), 200
+
+# this route gets all the reports published by a user
+@app.route('/public_petitions/<int:user_id>/', methods=['GET'])
 # @login_required
-def public_petition(id):
+def get_public_petitions_by_user_id(user_id):
+
+    public_petitions = PublicPetition.query.filter_by(user_id=user_id).all()
+
+    if public_petitions == None:
+        return {"error": "Public Petitions report not found"}, 404
+    else:
+        response = jsonify([petition.to_dict() for petition in public_petitions]), 200
+        return response
+
+@app.route('/public_petitions', methods=['POST'])
+# @login_required
+def user_post_public_petitions():
+    
+    print(request.json.get("media"))
+
+    existing_petition = PublicPetition.query.filter_by(
+        user_id=request.json.get("user_id"),
+        govt_agency=request.json.get("govt_agency"),
+        county=request.json.get("county"),
+        title=request.json.get("title"),
+        description=request.json.get("description"),
+        latitude=request.json.get("latitude"),
+        longitude=request.json.get("longitude"),
+    ).first()
+
+    if existing_petition:
+        return make_response(
+            {"error": "This Intervention Record already exists."}, 409
+        )
+    new_public_petition = PublicPetition(
+        
+        user_id=request.json.get("user_id"),
+        govt_agency=request.json.get("govt_agency"),
+        county=request.json.get("county"),
+        title=request.json.get("title"),
+        description=request.json.get("description"),
+        status='Pending',
+        latitude=request.json.get("latitude"),
+        longitude=request.json.get("longitude"),
+        media = request.json.get('media', [None])
+    )
+    db.session.add(new_public_petition) 
+
+    try:
+        db.session.commit()
+        response = {"message": "Successfully created"}
+        return make_response(response, 201)
+    except IntegrityError:
+        return {"error": "This error occured due to database integrity issues."}, 500
+    
+    
+        
+
+
+@app.route('/public_petitions/<int:id>', methods=['PATCH', 'DELETE'])
+# @login_required
+def user_patch_delete_public_petition(id):
+
     public_petition = PublicPetition.query.filter(PublicPetition.id==id).first()
 
     if public_petition == None:
         return {"error": "Intervention report not found"}, 404
     
     else:
-        if request.method == 'GET':
-            response = make_response(public_petition.to_dict(), 200)
-            return response
         
-        elif request.method == 'PATCH':
-            for attr in request.json:
-                setattr(public_petition, attr, request.json.get(attr))
-            
-            db.session.add(public_petition)
+        if request.method == 'PATCH':
+            data = request.json
+            if 'govt_agency' in data and data['govt_agency'] is not None:
+                public_petition.govt_agency = data['govt_agency']
+            if 'county' in data and data['county'] is not None:
+                public_petition.county = data['county']
+            if 'longitude' in data and data['longitude'] is not None:
+                public_petition.longitude = data['longitude']
+            if 'latitude' in data and data['latitude'] is not None:
+                public_petition.latitude = data['latitude']
+            if 'description' in data and data['description'] is not None:
+                public_petition.description = data['description']
+            if 'media' in data and data['media'] is not None:
+                public_petition.media = data['media']
+
             try:
                 db.session.commit()
-                return make_response(
-                    {"message": "Intervention successfully updated"}, 200
-                )
+                return jsonify({"message": "Intervention successfully updated"}), 200
+            
             except IntegrityError:
-                return {"error": "This error occured due to database integrity issues"}, 500
-        
+                db.session.rollback()
+                return {"error": "This error occurred due to database integrity issues"}, 500
+                    
         elif request.method == "DELETE":
             db.session.delete(public_petition)
             db.session.commit()
 
             return make_response({"message": "Intervention successfully deleted"}, 200)
-        
+    
 
-@app.route('/petition_resolutions', methods=['GET', 'POST'])
-# @login_required
+@app.route('/admin_public_petitions/<int:id>', methods=['PATCH'])
 # @admin_required
-def petition_resolutions():
-    
-    if request.method == 'GET':
-        petition_resolutions = []
-        for petition_resolution in PetitionResolution.query.all():
-            petition_resolutions.append(petition_resolution.to_dict())
-        return make_response(petition_resolutions, 200)
-    
-    elif request.method == 'POST':
-        existing_resolution = PetitionResolution.query.filter_by(
-            status=request.json.get("status"),
-            justification=request.json.get("justification"),
-            additional_comments=request.json.get("additional_comments"),
-            record_id=request.json.get("record_id")
-        ).first()
+# @login_required
+def admin_patch_delete_public_petition(id):
 
-        if existing_resolution:
-            return make_response({"error": "This resolution already exists"}, 409)
+    public_petition = PublicPetition.query.filter(PublicPetition.id==id).first()
+
+    if public_petition is None:
+        return {"error": "Intervention report not found"}, 404
+    
+    if request.method == 'PATCH':
+        data = request.json
+        if 'status' in data and data['status'] is not None:
+            public_petition.status = data['status']
+        if 'admin_comments' in data and data['admin_comments'] is not None:
+            public_petition.admin_comments = data['admin_comments']
         
-        new_pr = PetitionResolution(
-            status=request.json.get("status"),
-            justification=request.json.get("justification"),
-            additional_comments=request.json.get("additional_comments"),
-            record_id=request.json.get("record_id")
-        )
-        db.session.add(new_pr)
         try:
             db.session.commit()
-            return make_response({
-                "message": "Successfully created"
-            }, 201)
+            return jsonify({"message": "Intervention successfully updated"}), 200
+        
         except IntegrityError:
-            return {"error": "This error occured due to database integrity issues."}, 500
-
-
-@app.route('/petition_resolutions/<int:id>', methods=['GET'])
-# @login_required
-def get_petition_resolution(id):
-    pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
-    if pr == None:
-        return {"error": "Resolution record not found"}, 404
-    
-    else:
-        if request.method == 'GET':
-            response = make_response(pr.to_dict(), 200)
-            return response
-        
-
-@app.route('/petition_resolutions/<int:id>', methods=['PATCH', 'DELETE'])
-# @login_required
-# @admin_required
-def petition_resolution_operations(id):
-    pr = PetitionResolution.query.filter(PetitionResolution.id==id).first()
-    if pr == None:
-        return {"error": "Resolution record not found"}, 404
-    
-    else:
-        if request.method == 'PATCH':
-            for attr in request.json:
-                setattr(pr, attr, request.json.get(attr))
-            
-            db.session.add(pr)
-            try:
-                db.session.commit()
-                return make_response({
-                    "message": "Resolution successfully updated"
-                }, 200)
-            except IntegrityError:
-                return {"error": "This error occured due to database integrity issues."}, 500
-        
-        elif request.method == 'DELETE':
-            db.session.delete(pr)
-            db.session.commit()
-
-            return make_response({
-                "message": "Resolution successfully deleted"
-
-            })
-        
+            db.session.rollback()
+            return jsonify({"error": "This error occurred due to database integrity issues"}), 500        
 
 cloudinary_config       
-@app.route('/upload_resolution', methods=['POST'])
+@app.route('/upload_petition', methods=['POST'])
 def upload_resolution_file():    
     if 'file' not in request.files:
         return jsonify({"error": "Oops!! There is no file."}), 400
